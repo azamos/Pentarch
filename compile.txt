@@ -1,0 +1,1 @@
+g++ server/server.cpp third_party/libsqlite3.a -lws2_32 -o build/server.exe

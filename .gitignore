@@ -1,0 +1,16 @@
+/.vscode
+/build
+/CMakeFiles/
+/CMakeCache.txt
+/Makefile
+/*.o
+/*.a
+/*.exe
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.o
+*.a
+*.obj
+*.lib

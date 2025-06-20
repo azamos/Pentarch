@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body style="background-color: rgb(43, 41, 41)">
+    <div id="App" class="Flex-Col">
+      <div class="Nav Flex-Row Centered">
+        <div class="Nav-Btn Flex-Col Centered" onclick="handleClick(event)">
+          <span class="Clickable Flex-Col Centered">Home</span>
+        </div>
+        <div class="Nav-Btn Flex-Col Centered" onclick="handleClick(event)">
+          <span class="Clickable Flex-Col Centered">Admin Dashboard</span>
+        </div>
+        <div class="Nav-Btn Flex-Col Centered" onclick="handleClick(event)">
+          <span class="Clickable Flex-Col Centered">Sign In</span>
+        </div>
+        <div class="Nav-Btn Flex-Col Centered" onclick="handleClick(event)">
+          <span class="Clickable Flex-Col Centered">Register</span>
+        </div>
+      </div>
+      <div class="Main-Container Flex-Row Centered">
+        <span class="Flex-Col Centered">
+          <h1 class="MainTitle">Admin Dashboard View</h1>
+          <p class="InfoPar">
+            Please login with an administrator account to view the dashboard.
+          </p>
+        </span>
+      </div>
+      <div id="container" class="Flex-Row Centered Warp Gap"></div>
+    </div>
+    <script src="index.js"></script>
+  </body>
+</html>
