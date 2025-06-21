@@ -11,7 +11,8 @@
 #include <fstream> /* for serving the index.html file */
 #include <sstream>
 #include <unordered_map>
-#include "../third_party/sqlite3.h"
+#include "../third_party/sqlite/sqlite3.h"
+#include "../third_party/bcrypt/bcrypt.h"
 
 #pragma comment(lib, "Ws2_32.lib") // Link with Winsock library
 

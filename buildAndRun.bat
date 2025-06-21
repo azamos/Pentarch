@@ -1,6 +1,6 @@
 @echo off
 echo Building server...
-g++ server/server.cpp third_party/libsqlite3.a -lws2_32 -o build/server.exe
+g++ server/server.cpp third_party/sqlite/libsqlite3.a -lws2_32 -o build/server.exe
 
 if %errorlevel% equ 0 (
     echo Build successful! Output: build/server.exe
