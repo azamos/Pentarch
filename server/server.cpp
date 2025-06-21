@@ -73,6 +73,45 @@ bool init_db_connection()
 // Core: write user to DB, if not exist.
 // ─────────────────────────────────────────────
 
+bool login(const std::string &email, const std::string &password)
+{
+    sqlite3 *db = nullptr;
+    int rc = sqlite3_open_v2("users.db", &db,
+                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        std::cout << "[DB] db connection failure: " << sqlite3_errcode(db) << "\n";
+        sqlite3_close(db);
+        return false;
+    }
+
+    /*TODO: code dupl. Move to header file.*/
+    const char *sql_select_users = "SELECT 1  FROM users WHERE email = ? AND password = ?;";
+    sqlite3_stmt *stmt;
+    rc = sqlite3_prepare_v2(db, sql_select_users, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        std::cout << "[DB] db connection failure: " << sqlite3_errcode(db) << "\n";
+        sqlite3_close(db);
+        return false;
+    }
+    // binding the email and password to (?,?)
+    sqlite3_bind_text(stmt, 1, email.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, password.c_str(), -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    bool success = (rc == SQLITE_ROW);
+
+    if (!success)
+    {
+        std::cout << "[DEBUG] rc is not SQLITE_DONE" << sqlite3_errmsg(db) << "\n";
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return success;
+}
+
 bool register_user(const std::string &email, const std::string &password)
 {
     std::cout << "[DEBUG] email and password are " << email.c_str() << " , " << password.c_str() << "\n";
@@ -311,6 +350,17 @@ void handle_client(SOCKET clientSocket)
                 else
                 {
                     send_response(clientSocket, "409 Data received, failed to create due to conflict.\n", "text/plain", "409");
+                }
+            }
+            else if (path == "/login")
+            {
+                std::string email = formData["email"];
+                std::string password = formData["password"];
+                if (!login(email, password))
+                    send_response(clientSocket, "401 Unauthorized\n", "text/plain", "401");
+                else
+                {
+                    send_response(clientSocket, "200 OK\n", "text/plain", "200");
                 }
             }
         }
