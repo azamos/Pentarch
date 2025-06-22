@@ -1,5 +1,6 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
-
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h> // This will now exclude the conflicting APIs
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <iostream>
@@ -12,7 +13,7 @@
 #include <sstream>
 #include <unordered_map>
 #include "../third_party/sqlite/sqlite3.h"
-#include "../third_party/bcrypt/bcrypt.h"
+#include "../third_party/libsodium-win64/include/sodium.h"
 
 #pragma comment(lib, "Ws2_32.lib") // Link with Winsock library
 
@@ -70,6 +71,28 @@ bool init_db_connection()
     return true;
 }
 
+// ───────────────────────────────────────────────────────────
+// Hash passwords
+// ───────────────────────────────────────────────────────────
+std::string hash_password(const std::string &password)
+{
+    char hash[crypto_pwhash_STRBYTES];
+    int res = crypto_pwhash_str(hash, password.c_str(), password.size(), crypto_pwhash_OPSLIMIT_MODERATE, crypto_pwhash_MEMLIMIT_MODERATE);
+    if (res != 0)
+    {
+        std::cerr << "[ERROR] failed to hash password\n";
+    }
+    return std::string(hash);
+}
+
+// ───────────────────────────────────────────────────────────
+// Verify login raw password against hashed stored in db
+// ───────────────────────────────────────────────────────────
+bool verify_password(const std::string &password, const std::string &hashed)
+{
+    return crypto_pwhash_str_verify(hashed.c_str(), password.c_str(), password.size()) == 0;
+}
+
 // ─────────────────────────────────────────────
 // Core: write user to DB, if not exist.
 // ─────────────────────────────────────────────
@@ -87,7 +110,7 @@ bool login(const std::string &email, const std::string &password)
     }
 
     /*TODO: code dupl. Move to header file.*/
-    const char *sql_select_users = "SELECT 1  FROM users WHERE email = ? AND password = ?;";
+    const char *sql_select_users = "SELECT password FROM users WHERE email = ?;";
     sqlite3_stmt *stmt;
     rc = sqlite3_prepare_v2(db, sql_select_users, -1, &stmt, nullptr);
     if (rc != SQLITE_OK)
@@ -96,21 +119,27 @@ bool login(const std::string &email, const std::string &password)
         sqlite3_close(db);
         return false;
     }
-    // binding the email and password to (?,?)
+    // binding the email to ?
     sqlite3_bind_text(stmt, 1, email.c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, password.c_str(), -1, SQLITE_STATIC);
 
     rc = sqlite3_step(stmt);
     bool success = (rc == SQLITE_ROW);
-
-    if (!success)
+    bool password_match = false;
+    if (success)
+    {
+        /*Need to compare password to hashed password in db*/
+        const unsigned char *db_password_hash = sqlite3_column_text(stmt, 0);
+        std::string hashed(reinterpret_cast<const char *>(db_password_hash));
+        password_match = verify_password(password, hashed);
+    }
+    else
     {
         std::cout << "[DEBUG] rc is not SQLITE_DONE" << sqlite3_errmsg(db) << "\n";
     }
 
     sqlite3_finalize(stmt);
     sqlite3_close(db);
-    return success;
+    return password_match;
 }
 
 bool register_user(const std::string &email, const std::string &password)
@@ -346,7 +375,11 @@ void handle_client(SOCKET clientSocket)
                 std::string email = formData["email"];
                 std::string password = formData["password"];
                 std::string confirmation_password = formData["confirmation_password"];
-                if (register_user(email, password))
+                if (password != confirmation_password)
+                    send_response(clientSocket, "401 Unauthorized\n", "text/plain", "401");
+                std::string hashed_password = hash_password(password);
+                std::cout << "[DEBUG] hashed_password = " << hash_password << "\n";
+                if (register_user(email, hashed_password))
                     send_response(clientSocket, "201 User Created.", "text/plain", "201");
                 else
                 {
@@ -377,6 +410,12 @@ void handle_client(SOCKET clientSocket)
 
 int main()
 {
+    /*initialize libsodium*/
+    if (sodium_init() < 0)
+    {
+        std::cout << "[ERROR] libsodium failed to initialize!\n";
+        return 1;
+    }
     /* Initialize Winsock */
     WSADATA wsaData;
     int wsaResult = WSAStartup(MAKEWORD(2, 2), &wsaData);

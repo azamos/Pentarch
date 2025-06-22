@@ -15,3 +15,7 @@
 *.obj
 *.lib
 *.env
+*.dll
+/third_party
+/third_party/**/bin/
+/third_party/**/lib/
